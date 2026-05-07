@@ -9,8 +9,7 @@
   <title>Vokabeltrainer</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
   <style>
     /* ── RESET & CSS VARS ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,7 +27,7 @@
       --warn:      #f5a623;
       --err:       #e94560;
       --radius:    8px;
-      --font-ui:   'Syne', sans-serif;
+      --font-ui:   'DM Sans', sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
       --nav-h:     58px;
     }
@@ -79,13 +78,21 @@
     .topbar-right {
       display: flex; align-items: center; gap: 8px;
     }
+    /* Sprachauswahl Dropdown */
     .lang-select {
       background: var(--bg3); color: var(--text);
       border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 5px 8px; font-family: var(--font-ui); font-size: 13px;
+      padding: 8px 8px 10px 8px;   /* unten mehr Platz für g,p,q */
+      font-family: var(--font-ui); font-size: 13px;
       min-width: 110px;
+      height: 42px;                 /* explizite Höhe */
+      line-height: 1.5;
     }
-
+    /* Eingabefeld neue Sprache */
+    #le_newLanguage {
+      line-height: 1.6;
+      padding-bottom: 12px;
+    }
     /* ── SCREENS ── */
     .screen {
       display: none; flex: 1; overflow-y: auto;
@@ -135,9 +142,14 @@
     input[type=text], input[type=number], textarea, select.full {
       width: 100%; background: var(--bg3); color: var(--text);
       border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 8px 10px; font-family: var(--font-ui); font-size: 14px;
+      padding: 10px 10px 10px 10px;
+      font-family: var(--font-ui); font-size: 14px;
+      line-height: 1.5;
       outline: none; transition: border-color 0.15s;
       -webkit-appearance: none;
+    }
+    input[type=text], input[type=number] {
+      height: 42px;   /* genug Platz für g, p, q, y */
     }
     input[type=text]:focus, input[type=number]:focus, textarea:focus {
       border-color: var(--accent);
@@ -207,6 +219,9 @@
     .voc-card .voc-word {
       font-size: 32px; font-weight: 800; color: var(--text);
       letter-spacing: -1px; margin-bottom: 6px;
+      line-height: 1.4;          /* verhindert Abschneiden bei g,p,q,y */
+      overflow: visible;
+      padding-bottom: 4px;
     }
     .voc-card .voc-lang {
       font-size: 11px; color: var(--muted); font-weight: 600;
@@ -229,6 +244,7 @@
     .answer-value {
       font-size: 15px; font-weight: 600; color: var(--accent2);
       font-family: var(--font-mono);
+      line-height: 1.5;
     }
     .answer-value.muted { color: var(--muted); font-size: 13px; }
 
@@ -362,9 +378,9 @@
     <div class="table-wrap">
       <table id="tv_vokabel">
         <thead>
-          <tr>
-            <th>Vokabel</th><th>Sex</th><th>Bed. 1</th><th>Bed. 2</th><th>Bed. 3</th><th>Score</th>
-          </tr>
+        <tr>
+          <th>Vokabel</th><th>Sex</th><th>Bed. 1</th><th>Bed. 2</th><th>Bed. 3</th><th>Score</th>
+        </tr>
         </thead>
         <tbody></tbody>
       </table>
@@ -517,7 +533,7 @@
     <div class="table-wrap" style="max-height:160px">
       <table id="tv_imp_preview">
         <thead>
-          <tr><th>Vokabel</th><th>Bedeutung 1</th><th>Score</th></tr>
+        <tr><th>Vokabel</th><th>Bedeutung 1</th><th>Score</th></tr>
         </thead>
         <tbody></tbody>
       </table>
