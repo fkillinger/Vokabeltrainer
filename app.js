@@ -109,39 +109,48 @@ function refreshLanguageUI() {
 
 function createNewLanguage() {
     const name = document.getElementById('le_newLanguage').value.trim();
-    if (!name) return;
+    if (!name) {
+        showStatus('Bitte Sprachname eingeben', 'warn');
+        return;
+    }
+    if (!db) {
+        showStatus('Keine Datenbank geladen', 'err');
+        return;
+    }
     if (list_langage.includes(name)) {
         showStatus('Sprache bereits vorhanden', 'warn');
         return;
     }
-    if (!confirm(`Neue Sprachtabelle "${name}" anlegen?`)) return;
 
-    db.run(`CREATE TABLE IF NOT EXISTS "${name}" (
-                                                     id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                     language TEXT    NOT NULL,
-                                                     vocable  TEXT    NOT NULL,
-                                                     sex      TEXT,
-                                                     mean_1   TEXT    NOT NULL,
-                                                     mean_2   TEXT,
-                                                     mean_3   TEXT,
-                                                     remark   TEXT,
-                                                     score    INTEGER NOT NULL
-            )`);
-    markDirty();
+    try {
+        db.run(`CREATE TABLE IF NOT EXISTS "${name}" (
+            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            language TEXT    NOT NULL,
+            vocable  TEXT    NOT NULL,
+            sex      TEXT,
+            mean_1   TEXT    NOT NULL,
+            mean_2   TEXT,
+            mean_3   TEXT,
+            remark   TEXT,
+            score    INTEGER NOT NULL
+        )`);
+        markDirty();
 
-    // Sprachen neu laden
-    list_langage = [];
-    const res = db.exec("SELECT distinct tbl_name FROM sqlite_master WHERE type='table' AND tbl_name != 'sqlite_sequence' ORDER BY 1");
-    if (res.length > 0) {
-        res[0].values.forEach(row => list_langage.push(row[0]));
+        list_langage = [];
+        const res = db.exec("SELECT distinct tbl_name FROM sqlite_master WHERE type='table' AND tbl_name != 'sqlite_sequence' ORDER BY 1");
+        if (res.length > 0) {
+            res[0].values.forEach(row => list_langage.push(row[0]));
+        }
+
+        index_listLang = list_langage.indexOf(name);
+        if (index_listLang < 0) index_listLang = 0;
+
+        refreshLanguageUI();
+        document.getElementById('le_newLanguage').value = '';
+        showStatus(`Sprache "${name}" angelegt ✓`, 'ok');
+    } catch(e) {
+        showStatus('Fehler: ' + e.message, 'err');
     }
-
-    // Index VOR refreshLanguageUI setzen
-    index_listLang = list_langage.indexOf(name);
-    if (index_listLang < 0) index_listLang = 0;
-
-    refreshLanguageUI();
-    showStatus(`Sprache "${name}" angelegt ✓`, 'ok');
 }
 
 // ─── TABELLE (Hauptmaske) ────────────────────────────────────
@@ -259,9 +268,11 @@ function delRow() {
 function newVocRep() {
     if (!db || list_langage.length === 0) return;
     const lang = list_langage[index_listLang];
-    scoreMinFilter = parseInt(document.getElementById('rep_scoreMin').value) || 101;
+    scoreMinFilter = parseInt(document.getElementById('rep_scoreMin').value) || 0;
 
-    const eligible = db.exec(`SELECT id, vocable FROM "${lang}" WHERE score >= ${scoreMinFilter}`);
+    const scoreMax = parseInt(document.getElementById('rep_scoreMax').value) || 999;
+    const eligible = db.exec(`SELECT id, vocable FROM "${lang}" WHERE score >= ${scoreMinFilter} AND score <= ${scoreMax}`);
+
     if (!eligible.length || !eligible[0].values.length) {
         showStatus('Keine Vokabeln mit Score ≥ ' + scoreMinFilter + ' gefunden', 'warn');
         return;
@@ -396,6 +407,45 @@ function acceptImportVoc() {
 function nextImportVoc() {
     xlsxIndex++;
     showImportRow();
+}
+
+function importAllRemaining() {
+    if (xlsxRows.length === 0) {
+        showStatus('Keine Liste geladen', 'warn');
+        return;
+    }
+    const lang = list_langage[index_listLang];
+    const score = parseInt(document.getElementById('imp_score').value) || 50;
+    let imported = 0;
+    let updated = 0;
+
+    for (let i = xlsxIndex; i < xlsxRows.length; i++) {
+        const row = xlsxRows[i];
+        const voca   = (row[1] || '').trim();
+        const mean_1 = (row[0] || '').trim();
+        const mean_2 = (row[2] || '').trim();
+        const mean_3 = (row[3] || '').trim();
+
+        if (!voca || !mean_1) continue; // Zeile überspringen wenn Pflichtfelder leer
+
+        const check = db.exec(`SELECT id FROM "${lang}" WHERE vocable = '${voca.replace(/'/g,"''")}'`);
+        const existId = (check.length && check[0].values.length) ? check[0].values[0][0] : null;
+
+        if (existId) {
+            db.run(`UPDATE "${lang}" SET mean_1=?, mean_2=?, mean_3=?, score=? WHERE id=?`,
+                [mean_1, mean_2, mean_3, score, existId]);
+            updated++;
+        } else {
+            db.run(`INSERT INTO "${lang}" (language, vocable, sex, mean_1, mean_2, mean_3, remark, score) VALUES (?,?,?,?,?,?,?,?)`,
+                [lang, voca, '', mean_1, mean_2, mean_3, '', score]);
+            imported++;
+        }
+    }
+
+    markDirty();
+    xlsxIndex = xlsxRows.length; // Zeiger ans Ende setzen
+    document.getElementById('imp_counter').textContent = `${xlsxRows.length} / ${xlsxRows.length}`;
+    showStatus(`${imported} neu importiert, ${updated} aktualisiert ✓`, 'ok');
 }
 
 function updateImportSearch() {
