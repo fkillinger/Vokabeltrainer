@@ -10,7 +10,6 @@ let index_listLang = 0;
 let currentVocId = null;
 let editRowId = null;
 let autoSaveTimer = null;
-let scoreMinFilter = 0;
 let queryDirection = 'fwd'; // 'fwd' = Fremdsprache→Deutsch, 'rev' = Deutsch→Fremdsprache
 
 // ─── I18N ────────────────────────────────────────────────────
@@ -506,7 +505,7 @@ function createNewLanguage() {
 
         refreshLanguageUI();
         document.getElementById('le_newLanguage').value = '';
-        showStatus(`${t('st_langcreated').replace('✓', '')} "${name}" ✓`, 'ok');
+        showStatus(`"${name}" – ${t('st_langcreated')}`, 'ok');
     } catch(e) {
         showStatus(t('st_langerr') + e.message, 'err');
     }
@@ -518,16 +517,23 @@ function refreshTable(filterVoc = '', filterTrad = '') {
     if (!db || list_langage.length === 0) return;
     const lang = list_langage[index_listLang];
     const conditions = [];
-    if (filterVoc)  conditions.push(`vocable LIKE '${filterVoc.replace(/'/g,"''")}%'`);
-    if (filterTrad) conditions.push(`(mean_1 LIKE '${filterTrad.replace(/'/g,"''")}%' OR mean_2 LIKE '${filterTrad.replace(/'/g,"''")}%' OR mean_3 LIKE '${filterTrad.replace(/'/g,"''")}%')`);
+    const params = [];
+    if (filterVoc) {
+        conditions.push('vocable LIKE ?');
+        params.push(filterVoc + '%');
+    }
+    if (filterTrad) {
+        conditions.push('(mean_1 LIKE ? OR mean_2 LIKE ? OR mean_3 LIKE ?)');
+        params.push(filterTrad + '%', filterTrad + '%', filterTrad + '%');
+    }
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
 
-    const res = db.exec(`SELECT id, vocable, sex, mean_1, mean_2, mean_3, score FROM "${lang}" ${where} ORDER BY vocable ASC`);
+    const rows = dbQuery(`SELECT id, vocable, sex, mean_1, mean_2, mean_3, score FROM "${lang}" ${where} ORDER BY vocable ASC`, params);
     const tbody = document.querySelector('#tv_vokabel tbody');
     tbody.innerHTML = '';
 
-    if (res.length === 0) return;
-    res[0].values.forEach(row => {
+    if (rows.length === 0) return;
+    rows.forEach(row => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td class="td-voc">${esc(row[1])}</td>
@@ -545,9 +551,9 @@ function refreshTable(filterVoc = '', filterTrad = '') {
 
 function loadRowToFields(id) {
     const lang = list_langage[index_listLang];
-    const res = db.exec(`SELECT * FROM "${lang}" WHERE id = ${id}`);
-    if (!res.length || !res[0].values.length) return;
-    const row = res[0].values[0];
+    const rows = dbQuery(`SELECT * FROM "${lang}" WHERE id = ?`, [id]);
+    if (!rows.length) return;
+    const row = rows[0];
     document.getElementById('le_vokabel').value = row[2] || '';
     document.getElementById('le_sex').value     = row[3] || '';
     document.getElementById('le_bed1').value    = row[4] || '';
@@ -588,16 +594,13 @@ function writeVocToDB() {
 
     if (!voca || !mean_1) { showStatus(t('st_required'), 'err'); return; }
 
-    const check = db.exec(`SELECT id FROM "${lang}" WHERE vocable = '${voca.replace(/'/g,"''")}'`);
-    const existId = (check.length && check[0].values.length) ? check[0].values[0][0] : null;
-
+    const existId = findVocableId(lang, voca);
     if (existId) {
         db.run(`UPDATE "${lang}" SET language=?, vocable=?, sex=?, mean_1=?, mean_2=?, mean_3=?, remark=?, score=? WHERE id=?`,
             [lang, voca, sex, mean_1, mean_2, mean_3, remark, score, existId]);
         showStatus(t('st_updated'), 'ok');
     } else {
-        db.run(`INSERT INTO "${lang}" (language, vocable, sex, mean_1, mean_2, mean_3, remark, score) VALUES (?,?,?,?,?,?,?,?)`,
-            [lang, voca, sex, mean_1, mean_2, mean_3, remark, score]);
+        insertVocable(lang, voca, sex, mean_1, mean_2, mean_3, remark, score);
         showStatus(t('st_inserted'), 'ok');
     }
     markDirty();
@@ -620,16 +623,15 @@ function delRow() {
 function newVocRep() {
     if (!db || list_langage.length === 0) return;
     const lang = list_langage[index_listLang];
-    scoreMinFilter = parseInt(document.getElementById('rep_scoreMin').value) || 0;
+    const scoreMinFilter = parseInt(document.getElementById('rep_scoreMin').value) || 0;
     const scoreMax = parseInt(document.getElementById('rep_scoreMax').value) || 999;
 
-    const eligible = db.exec(`SELECT id, vocable, mean_1, mean_2, mean_3 FROM "${lang}" WHERE score >= ${scoreMinFilter} AND score <= ${scoreMax}`);
-    if (!eligible.length || !eligible[0].values.length) {
+    const eligible = dbQuery(`SELECT id, vocable, mean_1, mean_2, mean_3 FROM "${lang}" WHERE score >= ? AND score <= ?`, [scoreMinFilter, scoreMax]);
+    if (!eligible.length) {
         showStatus(t('st_noscorerange'), 'warn');
         return;
     }
-    const rows = eligible[0].values;
-    const pick = rows[Math.floor(Math.random() * rows.length)];
+    const pick = eligible[Math.floor(Math.random() * eligible.length)];
 
     currentVocId = pick[0];
     document.getElementById('rep_activeLang').textContent = lang;
@@ -651,9 +653,9 @@ function newVocRep() {
 function checkAnswer() {
     if (!currentVocId) { showStatus(t('st_loadfirst'), 'warn'); return; }
     const lang = list_langage[index_listLang];
-    const res = db.exec(`SELECT vocable, sex, mean_1, mean_2, mean_3, remark, score FROM "${lang}" WHERE id = ${currentVocId}`);
-    if (!res.length || !res[0].values.length) return;
-    const row = res[0].values[0];
+    const rows = dbQuery(`SELECT vocable, sex, mean_1, mean_2, mean_3, remark, score FROM "${lang}" WHERE id = ?`, [currentVocId]);
+    if (!rows.length) return;
+    const row = rows[0];
     // row: vocable=0, sex=1, mean_1=2, mean_2=3, mean_3=4, remark=5, score=6
 
     if (queryDirection === 'fwd') {
@@ -675,7 +677,7 @@ function checkAnswer() {
         document.getElementById('rep_remark').textContent = row[5] || '';
     }
 
-    document.getElementById('rep_scoreDisplay').textContent = 'Score: ' + row[6];
+    updateScoreDisplay(row[6]);
     document.getElementById('rep_answer').classList.remove('hidden');
     document.getElementById('rep_scoreControls').classList.remove('hidden');
 }
@@ -695,9 +697,9 @@ function adjustScore(delta) {
     const lang = list_langage[index_listLang];
     db.run(`UPDATE "${lang}" SET score = MAX(0, score + ?) WHERE id = ?`, [delta, currentVocId]);
     markDirty();
-    const res = db.exec(`SELECT score FROM "${lang}" WHERE id = ${currentVocId}`);
-    const newScore = res[0]?.values[0][0];
-    document.getElementById('rep_scoreDisplay').textContent = 'Score: ' + newScore;
+    const scoreRows = dbQuery(`SELECT score FROM "${lang}" WHERE id = ?`, [currentVocId]);
+    const newScore = scoreRows[0]?.[0] ?? 0;
+    updateScoreDisplay(newScore);
     showStatus('Score: ' + newScore, 'ok');
 }
 
@@ -708,16 +710,21 @@ let xlsxIndex = 0;
 
 async function importFromXlsx(file) {
     if (typeof XLSX === 'undefined') { showStatus('SheetJS...', 'warn'); return; }
-    const data = await file.arrayBuffer();
-    const wb = XLSX.read(data, { type: 'array' });
-    const sheetName = wb.SheetNames.includes('Tabelle1') ? 'Tabelle1' : wb.SheetNames[0];
-    const ws = wb.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-    xlsxRows = json.slice(2).filter(r => r[0] || r[1]);
-    xlsxIndex = 0;
-    if (xlsxRows.length === 0) { showStatus(t('st_noxlsxdata'), 'err'); return; }
-    showImportRow();
-    showStatus(`${xlsxRows.length} ${t('nav_import')} ✓`, 'ok');
+    try {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { type: 'array' });
+        if (!wb.SheetNames || wb.SheetNames.length === 0) { showStatus(t('st_noxlsxdata'), 'err'); return; }
+        const sheetName = wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        xlsxRows = json.slice(2).filter(r => r[0] || r[1]);
+        xlsxIndex = 0;
+        if (xlsxRows.length === 0) { showStatus(t('st_noxlsxdata'), 'err'); return; }
+        showImportRow();
+        showStatus(`${xlsxRows.length} ${t('nav_import')} ✓`, 'ok');
+    } catch (e) {
+        showStatus(t('st_saveerr') + e.message, 'err');
+    }
 }
 
 function showImportRow() {
@@ -745,16 +752,13 @@ function acceptImportVoc() {
 
     if (!voca || !mean_1) { showStatus(t('st_imp_required'), 'err'); return; }
 
-    const check = db.exec(`SELECT id FROM "${lang}" WHERE vocable = '${voca.replace(/'/g,"''")}'`);
-    const existId = (check.length && check[0].values.length) ? check[0].values[0][0] : null;
-
+    const existId = findVocableId(lang, voca);
     if (existId) {
         db.run(`UPDATE "${lang}" SET sex=?, mean_1=?, mean_2=?, mean_3=?, remark=?, score=? WHERE id=?`,
             [sex, mean_1, mean_2, mean_3, remark, score, existId]);
         showStatus(t('st_imp_updated'), 'ok');
     } else {
-        db.run(`INSERT INTO "${lang}" (language, vocable, sex, mean_1, mean_2, mean_3, remark, score) VALUES (?,?,?,?,?,?,?,?)`,
-            [lang, voca, sex, mean_1, mean_2, mean_3, remark, score]);
+        insertVocable(lang, voca, sex, mean_1, mean_2, mean_3, remark, score);
         showStatus(t('st_imp_inserted'), 'ok');
     }
     markDirty();
@@ -780,16 +784,13 @@ function importAllRemaining() {
         const mean_3 = (row[3] || '').trim();
         if (!voca || !mean_1) continue;
 
-        const check = db.exec(`SELECT id FROM "${lang}" WHERE vocable = '${voca.replace(/'/g,"''")}'`);
-        const existId = (check.length && check[0].values.length) ? check[0].values[0][0] : null;
-
+        const existId = findVocableId(lang, voca);
         if (existId) {
             db.run(`UPDATE "${lang}" SET mean_1=?, mean_2=?, mean_3=?, score=? WHERE id=?`,
                 [mean_1, mean_2, mean_3, score, existId]);
             updated++;
         } else {
-            db.run(`INSERT INTO "${lang}" (language, vocable, sex, mean_1, mean_2, mean_3, remark, score) VALUES (?,?,?,?,?,?,?,?)`,
-                [lang, voca, '', mean_1, mean_2, mean_3, '', score]);
+            insertVocable(lang, voca, '', mean_1, mean_2, mean_3, '', score);
             imported++;
         }
     }
@@ -803,16 +804,14 @@ function updateImportSearch() {
     const voca = document.getElementById('imp_vokabel').value.trim();
     if (!voca || !db || list_langage.length === 0) return;
     const lang = list_langage[index_listLang];
-    const res = db.exec(`SELECT vocable, mean_1, score FROM "${lang}" WHERE vocable LIKE '${voca.replace(/'/g,"''")}%' ORDER BY vocable LIMIT 10`);
+    const rows = dbQuery(`SELECT vocable, mean_1, score FROM "${lang}" WHERE vocable LIKE ? ORDER BY vocable LIMIT 10`, [voca + '%']);
     const tbody = document.querySelector('#tv_imp_preview tbody');
     tbody.innerHTML = '';
-    if (res.length && res[0].values.length) {
-        res[0].values.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${esc(row[0])}</td><td>${esc(row[1])}</td><td>${row[2]}</td>`;
-            tbody.appendChild(tr);
-        });
-    }
+    rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${esc(row[0])}</td><td>${esc(row[1])}</td><td>${row[2]}</td>`;
+        tbody.appendChild(tr);
+    });
 }
 
 // ─── SCREEN-NAVIGATION ──────────────────────────────────────
@@ -832,6 +831,29 @@ function showScreen(id) {
 
 function esc(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function dbQuery(sql, params = []) {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    const rows = [];
+    while (stmt.step()) rows.push(stmt.get());
+    stmt.free();
+    return rows;
+}
+
+function findVocableId(lang, voca) {
+    const rows = dbQuery(`SELECT id FROM "${lang}" WHERE vocable = ?`, [voca]);
+    return rows.length ? rows[0][0] : null;
+}
+
+function insertVocable(lang, voca, sex, mean_1, mean_2, mean_3, remark, score) {
+    db.run(`INSERT INTO "${lang}" (language, vocable, sex, mean_1, mean_2, mean_3, remark, score) VALUES (?,?,?,?,?,?,?,?)`,
+        [lang, voca, sex, mean_1, mean_2, mean_3, remark, score]);
+}
+
+function updateScoreDisplay(score) {
+    document.getElementById('rep_scoreDisplay').textContent = 'Score: ' + score;
 }
 
 function showStatus(msg, type = 'ok') {
@@ -912,7 +934,7 @@ async function init() {
     showScreen('screen_main');
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(() => {});
+        navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW:', e.message));
     }
 }
 

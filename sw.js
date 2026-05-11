@@ -24,7 +24,25 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
-  );
+  const isLocal = new URL(e.request.url).origin === self.location.origin;
+
+  if (isLocal) {
+    // Stale-while-revalidate: sofort aus Cache, im Hintergrund aktualisieren
+    e.respondWith(
+      caches.open(CACHE_NAME).then(cache =>
+        cache.match(e.request).then(cached => {
+          const networkFetch = fetch(e.request).then(response => {
+            cache.put(e.request, response.clone());
+            return response;
+          }).catch(() => cached);
+          return cached || networkFetch;
+        })
+      )
+    );
+  } else {
+    // Cache-first für CDN-Ressourcen (versionierte URLs)
+    e.respondWith(
+      caches.match(e.request).then(cached => cached || fetch(e.request))
+    );
+  }
 });
