@@ -292,7 +292,11 @@
 
   <!-- TOP BAR -->
   <div class="topbar">
-    <h1><span data-i18n="app_title">Vokabel</span><span data-i18n="app_title2">trainer</span></h1>
+    <div style="display:flex;align-items:center;gap:8px">
+      <h1><span data-i18n="app_title">Vokabel</span><span data-i18n="app_title2">trainer</span></h1>
+      <span style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:0.5px;padding:2px 6px;background:var(--bg3);border:1px solid var(--border);border-radius:4px">v1.0</span>
+      <button onclick="showAbout()" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 4px;line-height:1" title="Info">ℹ️</button>
+    </div>
     <div class="topbar-right">
       <!-- Sprachumschalter -->
       <div class="lang-switcher">
@@ -377,6 +381,7 @@
     <div class="lang-row">
       <input type="text" id="le_newLanguage" data-i18n="ph_newlang" data-i18n-attr="placeholder" placeholder="Sprache z.B. Espanol"/>
       <button class="btn btn-warn btn-sm" onclick="createNewLanguage()" data-i18n="btn_newlang">Anlegen</button>
+      <button class="btn btn-secondary btn-sm" onclick="deleteLanguage()" style="color:var(--err)" data-i18n="btn_dellang">Sprache löschen</button>
     </div>
 
     <div class="section-title" data-i18n="sec_db">Datenbank</div>
@@ -561,6 +566,35 @@
     </button>
   </nav>
 
+</div>
+
+<style>
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-overlay.hidden { display: none !important; }
+  .modal-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px 24px; max-width: 340px; width: 100%;
+    text-align: center;
+  }
+  .modal-box h2 { font-size: 22px; font-weight: 800; color: var(--accent); margin-bottom: 6px; }
+  .modal-box .modal-version { font-size: 12px; color: var(--muted); margin-bottom: 16px; font-family: var(--font-mono); }
+  .modal-box p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; white-space: pre-line; }
+</style>
+
+<!-- About Modal -->
+<div id="about_modal" class="modal-overlay hidden" onclick="hideAbout()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <h2 data-i18n="about_title">Vokabeltrainer</h2>
+    <div class="modal-version">v1.0</div>
+    <p data-i18n="about_text">Persönlicher Vokabeltrainer – kostenlose Version
+Bis zu 3 Sprachen, unbegrenzte Vokabeln
+Daten werden lokal gespeichert.</p>
+    <button class="btn btn-primary btn-sm" onclick="hideAbout()" data-i18n="btn_close">Schließen</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>

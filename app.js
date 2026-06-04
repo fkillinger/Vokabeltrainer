@@ -127,6 +127,14 @@ const i18n = {
         // confirm
         cf_delete:          'Datensatz wirklich löschen?',
         st_maxlang:         'Maximum 3 Sprachen in der kostenlosen Version',
+        btn_dellang:        'Sprache löschen',
+        st_dellang_confirm: 'Sprache und ALLE Vokabeln unwiderruflich löschen?',
+        st_dellang_ok:      'Sprache gelöscht ✓',
+        st_dellang_none:    'Keine Sprache ausgewählt',
+        lbl_version:        'Version',
+        about_title:        'Vokabeltrainer',
+        about_text:         'Persönlicher Vokabeltrainer – kostenlose Version\nBis zu 3 Sprachen, unbegrenzte Vokabeln\nDaten werden lokal gespeichert.',
+        btn_close:          'Schließen',
     },
     en: {
         app_title:          'Vocab',
@@ -231,6 +239,14 @@ const i18n = {
         st_noselected:      'No row selected in table',
         cf_delete:          'Really delete this record?',
         st_maxlang:         'Maximum 3 languages in the free version',
+        btn_dellang:        'Delete language',
+        st_dellang_confirm: 'Delete language and ALL vocabulary permanently?',
+        st_dellang_ok:      'Language deleted ✓',
+        st_dellang_none:    'No language selected',
+        lbl_version:        'Version',
+        about_title:        'Vocab Trainer',
+        about_text:         'Personal vocabulary trainer – free version\nUp to 3 languages, unlimited vocabulary\nData is stored locally.',
+        btn_close:          'Close',
     },
     fr: {
         app_title:          'Voca',
@@ -335,6 +351,14 @@ const i18n = {
         st_noselected:      'Aucune ligne sélectionnée dans le tableau',
         cf_delete:          'Vraiment supprimer cet enregistrement?',
         st_maxlang:         'Maximum 3 langues dans la version gratuite',
+        btn_dellang:        'Supprimer la langue',
+        st_dellang_confirm: 'Supprimer la langue et TOUS les mots définitivement?',
+        st_dellang_ok:      'Langue supprimée ✓',
+        st_dellang_none:    'Aucune langue sélectionnée',
+        lbl_version:        'Version',
+        about_title:        'Entraîneur de vocabulaire',
+        about_text:         'Entraîneur de vocabulaire personnel – version gratuite\nJusqu\'à 3 langues, vocabulaire illimité\nLes données sont stockées localement.',
+        btn_close:          'Fermer',
     }
 };
 
@@ -515,6 +539,35 @@ function createNewLanguage() {
     } catch(e) {
         showStatus(t('st_langerr') + e.message, 'err');
     }
+}
+
+function deleteLanguage() {
+    if (list_langage.length === 0) { showStatus(t('st_dellang_none'), 'warn'); return; }
+    const lang = list_langage[index_listLang];
+    if (!confirm(`${t('st_dellang_confirm')}\n\n"${lang}"`)) return;
+    try {
+        db.run(`DROP TABLE IF EXISTS "${lang}"`);
+        markDirty();
+        list_langage = [];
+        const res = db.exec("SELECT distinct tbl_name FROM sqlite_master WHERE type='table' AND tbl_name != 'sqlite_sequence' ORDER BY 1");
+        if (res.length > 0) res[0].values.forEach(row => list_langage.push(row[0]));
+        index_listLang = 0;
+        localStorage.setItem('activeLang', list_langage[0] || '');
+        refreshLanguageUI();
+        showStatus(`"${lang}" – ${t('st_dellang_ok')}`, 'ok');
+    } catch(e) {
+        showStatus(t('st_langerr') + e.message, 'err');
+    }
+}
+
+function showAbout() {
+    const el = document.getElementById('about_modal');
+    if (el) el.classList.remove('hidden');
+}
+
+function hideAbout() {
+    const el = document.getElementById('about_modal');
+    if (el) el.classList.add('hidden');
 }
 
 // ─── TABELLE (Hauptmaske) ────────────────────────────────────
