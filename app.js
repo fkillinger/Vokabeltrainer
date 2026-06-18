@@ -434,15 +434,16 @@ function applyLanguage() {
         b.classList.toggle('active', b.dataset.lang === uiLang);
     });
 
-    // Tabellenkopf aktualisieren
+    // Tabellenkopf aktualisieren (7 Spalten, letzte = 🔊 fest)
     const ths = document.querySelectorAll('#tv_vokabel thead th');
-    if (ths.length === 6) {
+    if (ths.length >= 6) {
         ths[0].textContent = t('th_vocable');
         ths[1].textContent = t('th_sex');
         ths[2].textContent = t('th_mean1');
         ths[3].textContent = t('th_mean2');
         ths[4].textContent = t('th_mean3');
         ths[5].textContent = t('th_score');
+        // ths[6] = 🔊 bleibt fest
     }
 
     localStorage.setItem('uiLang', uiLang);
@@ -451,6 +452,12 @@ function applyLanguage() {
 function setUiLang(lang) {
     uiLang = lang;
     applyLanguage();
+}
+
+function speakField() {
+    const lang = list_langage[index_listLang];
+    const text = document.getElementById('le_vokabel').value.trim();
+    if (text) speak(text, lang);
 }
 
 // ─── DB PERSISTENZ ──────────────────────────────────────────

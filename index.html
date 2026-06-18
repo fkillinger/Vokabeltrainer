@@ -330,7 +330,10 @@
 
     <div class="field-row">
       <label data-i18n="lbl_vocable">Vokabel</label>
-      <input type="text" id="le_vokabel" data-i18n="lbl_vocable" data-i18n-attr="placeholder"/>
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="text" id="le_vokabel" data-i18n="lbl_vocable" data-i18n-attr="placeholder"/>
+        <button class="speak-btn" onclick="speakField()" title="Aussprache">🔊</button>
+      </div>
     </div>
     <div class="field-row">
       <label data-i18n="lbl_sex">Geschlecht</label>
@@ -382,6 +385,7 @@
             <th data-i18n="th_mean2">Bed. 2</th>
             <th data-i18n="th_mean3">Bed. 3</th>
             <th data-i18n="th_score">Score</th>
+            <th>🔊</th>
           </tr>
         </thead>
         <tbody></tbody>
