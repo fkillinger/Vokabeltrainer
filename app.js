@@ -13,6 +13,55 @@ let autoSaveTimer = null;
 let scoreMinFilter = 0;
 let queryDirection = 'fwd'; // 'fwd' = Fremdsprache→Deutsch, 'rev' = Deutsch→Fremdsprache
 
+// ─── TEXT-TO-SPEECH ─────────────────────────────────────────────
+
+const langCodeMap = {
+    'franz':    'fr-FR',
+    'french':   'fr-FR',
+    'français': 'fr-FR',
+    'english':  'en-GB',
+    'englisch': 'en-GB',
+    'danish':   'da-DK',
+    'dänisch':  'da-DK',
+    'spanish':  'es-ES',
+    'spanisch': 'es-ES',
+    'italian':  'it-IT',
+    'italienisch': 'it-IT',
+};
+
+function getLangCode(tableName) {
+    const key = (tableName || '').toLowerCase();
+    return langCodeMap[key] || 'de-DE';
+}
+
+function speak(text, tableName) {
+    if (!text || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel(); // laufende Ausgabe stoppen
+    const utterance = new SpeechSynthesisUtterance(text.trim());
+    utterance.lang = getLangCode(tableName);
+    utterance.rate = 0.85;
+    utterance.pitch = 1.0;
+    window.speechSynthesis.speak(utterance);
+}
+
+function speakCurrent() {
+    const lang = list_langage[index_listLang];
+    const text = document.getElementById('rep_vokabel').textContent;
+    if (text && text !== '–') speak(text, lang);
+}
+
+function speakAnswer() {
+    // Antwort vorlesen: bei fwd = Bedeutung 1, bei rev = Vokabel
+    const lang = list_langage[index_listLang];
+    if (queryDirection === 'fwd') {
+        const text = document.getElementById('rep_mean1').textContent;
+        if (text) speak(text, 'deutsch');
+    } else {
+        const text = document.getElementById('rep_ans_vocable').textContent;
+        if (text) speak(text, lang);
+    }
+}
+
 // ─── I18N ────────────────────────────────────────────────────
 
 const i18n = {

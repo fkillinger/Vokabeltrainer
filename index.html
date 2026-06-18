@@ -95,6 +95,19 @@
       min-width: 100px; height: 38px; line-height: 1.5;
     }
 
+    /* ── SPEAK BUTTON ── */
+    .speak-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; padding: 4px 6px;
+      border-radius: 6px; transition: background 0.15s;
+      line-height: 1; vertical-align: middle;
+    }
+    .speak-btn:hover { background: var(--bg3); }
+    .speak-btn:active { opacity: 0.6; }
+    .voc-word-row {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+
     /* ── RICHTUNGSUMSCHALTER ── */
     .dir-switcher {
       display: flex; gap: 3px; background: var(--bg3);
@@ -427,7 +440,10 @@
 
     <div class="voc-card">
       <div class="voc-lang" id="rep_langLabel">–</div>
-      <div class="voc-word" id="rep_vokabel">–</div>
+      <div class="voc-word-row">
+        <div class="voc-word" id="rep_vokabel">–</div>
+        <button class="speak-btn" onclick="speakCurrent()" title="Aussprache">🔊</button>
+      </div>
     </div>
 
     <button class="btn btn-secondary btn-block" onclick="checkAnswer()" data-i18n="btn_checkanswer">
@@ -438,6 +454,7 @@
       <div class="answer-row hidden" id="rep_ans_vocable_row">
         <span class="answer-label" data-i18n="lbl_ans_vocable">Vokabel</span>
         <span class="answer-value" id="rep_ans_vocable" style="color:var(--accent);font-size:20px;font-weight:800"></span>
+        <button class="speak-btn" onclick="speakAnswer()" title="Aussprache">🔊</button>
       </div>
       <div class="answer-row">
         <span class="answer-label" data-i18n="lbl_ans_sex">Geschlecht</span>
@@ -446,6 +463,7 @@
       <div class="answer-row">
         <span class="answer-label" data-i18n="lbl_ans_mean1">Bedeutung 1</span>
         <span class="answer-value" id="rep_mean1"></span>
+        <button class="speak-btn" onclick="speakAnswer()" title="Aussprache">🔊</button>
       </div>
       <div class="answer-row">
         <span class="answer-label" data-i18n="lbl_ans_mean2">Bedeutung 2</span>
