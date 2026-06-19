@@ -563,7 +563,7 @@ function createNewLanguage() {
     const name = document.getElementById('le_newLanguage').value.trim();
     if (!name) { showStatus(t('st_langempty'), 'warn'); return; }
     if (!db)   { showStatus(t('st_nodb'), 'err'); return; }
-    if (list_langage.length >= 3) { showStatus(t('st_maxlang'), 'warn'); return; }
+    if (list_langage.length >= 10) { showStatus(t('st_maxlang'), 'warn'); return; }
     if (list_langage.includes(name)) { showStatus(t('st_langexists'), 'warn'); return; }
 
     try {
