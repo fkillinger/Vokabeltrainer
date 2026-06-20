@@ -127,6 +127,7 @@ const i18n = {
         lbl_ans_vocable:    'Vokabel',
         // Screen Import
         lbl_activelang_imp: 'Aktive Sprache',
+        sec_presetlists:    'Vorgefertigte Wortlisten',
         sec_xlsx:           'Import aus Excel (.xlsx)',
         btn_xlsx:           '📊 .xlsx wählen',
         lbl_voc_imp:        'Vokabel',
@@ -241,6 +242,7 @@ const i18n = {
         dir_rev:            '→ Foreign',
         lbl_ans_vocable:    'Word',
         lbl_activelang_imp: 'Active language',
+        sec_presetlists:    'Preset word lists',
         sec_xlsx:           'Import from Excel (.xlsx)',
         btn_xlsx:           '📊 Choose .xlsx',
         lbl_voc_imp:        'Word',
@@ -353,6 +355,7 @@ const i18n = {
         dir_rev:            '→ Langue étrangère',
         lbl_ans_vocable:    'Mot',
         lbl_activelang_imp: 'Langue active',
+        sec_presetlists:    'Listes de vocabulaire prédéfinies',
         sec_xlsx:           'Importer depuis Excel (.xlsx)',
         btn_xlsx:           '📊 Choisir .xlsx',
         lbl_voc_imp:        'Mot',
@@ -563,7 +566,7 @@ function createNewLanguage() {
     const name = document.getElementById('le_newLanguage').value.trim();
     if (!name) { showStatus(t('st_langempty'), 'warn'); return; }
     if (!db)   { showStatus(t('st_nodb'), 'err'); return; }
-    if (list_langage.length >= 10) { showStatus(t('st_maxlang'), 'warn'); return; }
+    if (list_langage.length >= 3) { showStatus(t('st_maxlang'), 'warn'); return; }
     if (list_langage.includes(name)) { showStatus(t('st_langexists'), 'warn'); return; }
 
     try {
@@ -913,6 +916,47 @@ function importAllRemaining() {
     showStatus(`${imported} ${t('st_imp_all')} ${updated} ${t('st_imp_all2')}`, 'ok');
 }
 
+// ─── VORGEFERTIGTE WORTLISTEN ────────────────────────────────
+
+async function loadPresetLists() {
+    const container = document.getElementById('preset_list_container');
+    container.innerHTML = '<p style="font-size:12px;color:var(--muted)">Lade Liste...</p>';
+    try {
+        const res = await fetch('wortlisten/wortlisten.json');
+        if (!res.ok) throw new Error('nicht gefunden');
+        const lists = await res.json();
+        if (!Array.isArray(lists) || lists.length === 0) {
+            container.innerHTML = '<p style="font-size:12px;color:var(--muted)">Keine Listen verfügbar.</p>';
+            return;
+        }
+        container.innerHTML = '';
+        lists.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-secondary btn-sm';
+            btn.style.margin = '4px';
+            btn.textContent = '📥 ' + item.name;
+            btn.addEventListener('click', () => loadPresetList(item.file, item.name));
+            container.appendChild(btn);
+        });
+    } catch (e) {
+        container.innerHTML = '<p style="font-size:12px;color:var(--muted)">Keine Wortlisten gefunden.</p>';
+    }
+}
+
+async function loadPresetList(filename, displayName) {
+    showStatus(`Lade "${displayName}"...`, 'warn');
+    try {
+        const res = await fetch('wortlisten/' + filename);
+        if (!res.ok) throw new Error('Datei nicht gefunden: ' + filename);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: blob.type });
+        await importFromXlsx(file);
+        showStatus(`"${displayName}" geladen ✓`, 'ok');
+    } catch (e) {
+        showStatus('Fehler beim Laden: ' + e.message, 'err');
+    }
+}
+
 function updateImportSearch() {
     const voca = document.getElementById('imp_vokabel').value.trim();
     if (!voca || !db || list_langage.length === 0) return;
@@ -939,7 +983,10 @@ function showScreen(id) {
     document.querySelectorAll('.nav-btn')[map[id]]?.classList.add('active');
     if (id === 'screen_main')     refreshTable();
     if (id === 'screen_repeater') document.getElementById('rep_activeLang').textContent = list_langage[index_listLang] || '';
-    if (id === 'screen_import')   document.getElementById('imp_activeLang').textContent = list_langage[index_listLang] || '';
+    if (id === 'screen_import') {
+        document.getElementById('imp_activeLang').textContent = list_langage[index_listLang] || '';
+        loadPresetLists();
+    }
 }
 
 // ─── HILFSFUNKTIONEN ────────────────────────────────────────
