@@ -185,6 +185,7 @@ const i18n = {
         about_title:        'Vokabeltrainer',
         about_text:         'Persönlicher Vokabeltrainer – kostenlose Version\nBis zu 3 Sprachen, unbegrenzte Vokabeln\nDaten werden lokal gespeichert.',
         btn_close:          'Schließen',
+        lnk_manual:         'Benutzerhandbuch öffnen',
     },
     en: {
         app_title:          'Vocab',
@@ -298,6 +299,7 @@ const i18n = {
         about_title:        'Vocab Trainer',
         about_text:         'Personal vocabulary trainer – free version\nUp to 3 languages, unlimited vocabulary\nData is stored locally.',
         btn_close:          'Close',
+        lnk_manual:         'Open user manual',
     },
     fr: {
         app_title:          'Voca',
@@ -411,6 +413,7 @@ const i18n = {
         about_title:        'Entraîneur de vocabulaire',
         about_text:         'Entraîneur de vocabulaire personnel – version gratuite\nJusqu\'à 3 langues, vocabulaire illimité\nLes données sont stockées localement.',
         btn_close:          'Fermer',
+        lnk_manual:         "Ouvrir le manuel d'utilisation",
     }
 };
 
